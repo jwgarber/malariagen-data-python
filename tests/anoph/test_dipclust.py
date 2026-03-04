@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -7,14 +6,14 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.dipclust import AnophelesDipClustAnalysis
 
 
-def random_transcripts_contig(*, api, contig, n):
+def random_transcripts_contig(*, api, contig, n, rng):
     df_gff = api.genome_features(attributes=["ID", "Parent"])
     df_transcripts = df_gff.query(f"type == 'mRNA' and contig == '{contig}'")
     transcript_ids = df_transcripts["ID"].dropna().to_list()
     n = min(n, len(transcript_ids))
     if n == 0:
         pytest.skip(f"No mRNA transcripts found for contig '{contig}'")
-    transcripts = random.sample(transcript_ids, n)
+    transcripts = rng.choice(transcript_ids, n, replace=False).tolist()
     return transcripts
 
 
@@ -87,7 +86,7 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering(
-    fixture, api: AnophelesDipClustAnalysis, distance_metric, sample_query
+    fixture, rng, api: AnophelesDipClustAnalysis, distance_metric, sample_query
 ):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -102,8 +101,8 @@ def test_plot_diplotype_clustering(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -125,7 +124,7 @@ def test_plot_diplotype_clustering(
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced(
-    fixture, api: AnophelesDipClustAnalysis, distance_metric, sample_query
+    fixture, rng, api: AnophelesDipClustAnalysis, distance_metric, sample_query
 ):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -140,8 +139,8 @@ def test_plot_diplotype_clustering_advanced(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -163,11 +162,11 @@ def test_plot_diplotype_clustering_advanced(
 @pytest.mark.parametrize("n", [1, 2])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced_with_transcript(
-    fixture, api: AnophelesDipClustAnalysis, n, sample_query
+    fixture, rng, api: AnophelesDipClustAnalysis, n, sample_query
 ):
     # Set up test parameters.
     contig = fixture.random_contig()
-    transcripts = random_transcripts_contig(api=api, contig=contig, n=n)
+    transcripts = random_transcripts_contig(api=api, contig=contig, n=n, rng=rng)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     linkage_methods = (
         "single",
@@ -181,8 +180,8 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
     dipclust_params = dict(
         region=contig,
         snp_transcript=transcripts,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,
@@ -203,7 +202,7 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
 @pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced_with_cnv_region(
-    fixture, api: AnophelesDipClustAnalysis, sample_query
+    fixture, rng, api: AnophelesDipClustAnalysis, sample_query
 ):
     # Set up test parameters.
     region = fixture.random_region_str(region_size=5000)
@@ -220,8 +219,8 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
     dipclust_params = dict(
         region=region,
         cnv_region=region,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,

@@ -1,4 +1,3 @@
-import random
 from itertools import product
 
 import allel  # type: ignore
@@ -218,7 +217,7 @@ def check_site_filters(api: AnophelesSnpData, mask, region):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_site_filters(fixture, api: AnophelesSnpData):
+def test_site_filters(fixture, rng, api: AnophelesSnpData):
     for mask in api.site_mask_ids:
         # Test with contig.
         contig = fixture.random_contig()
@@ -230,11 +229,11 @@ def test_site_filters(fixture, api: AnophelesSnpData):
 
         # Test with genome feature ID.
         df_gff = api.genome_features(attributes=["ID"])
-        region = random.choice(df_gff["ID"].dropna().to_list())
+        region = rng.choice(df_gff["ID"].dropna().to_list())
         check_site_filters(api, mask=mask, region=region)
 
 
-def check_snp_sites(api: AnophelesSnpData, region):
+def check_snp_sites(api: AnophelesSnpData, region, rng):
     pos = api.snp_sites(region=region, field="POS")
     ref = api.snp_sites(region=region, field="REF")
     alt = api.snp_sites(region=region, field="ALT")
@@ -250,7 +249,7 @@ def check_snp_sites(api: AnophelesSnpData, region):
     assert pos.shape[0] == ref.shape[0] == alt.shape[0]
 
     # Apply site mask.
-    mask = random.choice(api.site_mask_ids)
+    mask = rng.choice(api.site_mask_ids)
     filter_pass = api.site_filters(region=region, mask=mask).compute()
     n_pass = np.count_nonzero(filter_pass)
     pos_pass = api.snp_sites(
@@ -275,27 +274,27 @@ def check_snp_sites(api: AnophelesSnpData, region):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_sites(fixture, api: AnophelesSnpData):
+def test_snp_sites(fixture, rng, api: AnophelesSnpData):
     # Test with contig.
     contig = fixture.random_contig()
-    check_snp_sites(api=api, region=contig)
+    check_snp_sites(api=api, region=contig, rng=rng)
 
     # Test with region string.
     region = fixture.random_region_str()
-    check_snp_sites(api=api, region=region)
+    check_snp_sites(api=api, region=region, rng=rng)
 
     # Test with genome feature ID.
     df_gff = api.genome_features(attributes=["ID"])
-    region = random.choice(df_gff["ID"].dropna().to_list())
-    check_snp_sites(api=api, region=region)
+    region = rng.choice(df_gff["ID"].dropna().to_list())
+    check_snp_sites(api=api, region=region, rng=rng)
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
+def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom, rng):
     api = ag3_sim_api
 
     # Standard checks.
-    check_snp_sites(api, region=chrom)
+    check_snp_sites(api, region=chrom, rng=rng)
 
     # Extra checks.
     contig_r, contig_l = api.virtual_contigs[chrom]
@@ -308,11 +307,11 @@ def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.
-    check_snp_sites(api, region=region)
+    check_snp_sites(api, region=region, rng=rng)
 
     # Extra checks.
     region_size = stop - start
@@ -366,7 +365,7 @@ def _check_site_annotations(api: AnophelesSnpData, region, site_mask):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_site_annotations(fixture, api):
+def test_site_annotations(fixture, api, rng):
     # Parametrize region.
     contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
@@ -374,11 +373,11 @@ def test_site_annotations(fixture, api):
     parametrize_region = [
         contig,
         fixture.random_region_str(),
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Parametrize site_mask.
-    parametrize_site_mask = (None, random.choice(api.site_mask_ids))
+    parametrize_site_mask = (None, rng.choice(api.site_mask_ids))
 
     # Run tests.
     for region, site_mask in product(
@@ -393,7 +392,7 @@ def test_site_annotations(fixture, api):
 
 
 def check_snp_genotypes(
-    api, region, sample_sets=None, sample_query=None, sample_query_options={}
+    api, region, rng, sample_sets=None, sample_query=None, sample_query_options={}
 ):
     df_samples = api.sample_metadata(
         sample_sets=sample_sets,
@@ -467,7 +466,7 @@ def check_snp_genotypes(
     assert ad.shape[2] == 4
 
     # Check with site mask.
-    mask = random.choice(api.site_mask_ids)
+    mask = rng.choice(api.site_mask_ids)
     filter_pass = api.site_filters(region=region, mask=mask).compute()
     gt_pass = api.snp_genotypes(
         region=region,
@@ -504,7 +503,7 @@ def check_snp_genotypes(
 @parametrize_with_cases(
     "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
 )
-def test_snp_genotypes_with_sample_sets_param(fixture, api: AnophelesSnpData):
+def test_snp_genotypes_with_sample_sets_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
 
@@ -513,21 +512,21 @@ def test_snp_genotypes_with_sample_sets_param(fixture, api: AnophelesSnpData):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Run tests.
     for sample_sets in parametrize_sample_sets:
-        check_snp_genotypes(api=api, sample_sets=sample_sets, region=region)
+        check_snp_genotypes(api=api, sample_sets=sample_sets, region=region, rng=rng)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_genotypes_with_region_param(fixture, api: AnophelesSnpData):
+def test_snp_genotypes_with_region_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
 
     # Parametrize region.
     contig = fixture.random_contig()
@@ -536,12 +535,12 @@ def test_snp_genotypes_with_region_param(fixture, api: AnophelesSnpData):
         contig,
         fixture.random_region_str(),
         [fixture.random_region_str(), fixture.random_region_str()],
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Run tests.
     for region in parametrize_region:
-        check_snp_genotypes(api=api, sample_sets=sample_sets, region=region)
+        check_snp_genotypes(api=api, sample_sets=sample_sets, region=region, rng=rng)
 
 
 @pytest.mark.parametrize(
@@ -549,9 +548,9 @@ def test_snp_genotypes_with_region_param(fixture, api: AnophelesSnpData):
     ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"],
 )
 def test_snp_genotypes_with_sample_query_param(
-    ag3_sim_api: AnophelesSnpData, sample_query
+    ag3_sim_api: AnophelesSnpData, sample_query, rng
 ):
-    contig = random.choice(ag3_sim_api.contigs)
+    contig = rng.choice(ag3_sim_api.contigs)
     df_samples = ag3_sim_api.sample_metadata().query(sample_query)
 
     if len(df_samples) == 0:
@@ -559,7 +558,9 @@ def test_snp_genotypes_with_sample_query_param(
             ag3_sim_api.snp_genotypes(region=contig, sample_query=sample_query)
 
     else:
-        check_snp_genotypes(api=ag3_sim_api, region=contig, sample_query=sample_query)
+        check_snp_genotypes(
+            api=ag3_sim_api, region=contig, sample_query=sample_query, rng=rng
+        )
 
 
 @pytest.mark.parametrize(
@@ -578,9 +579,9 @@ def test_snp_genotypes_with_sample_query_param(
     ],
 )
 def test_snp_genotypes_with_sample_query_options_param(
-    ag3_sim_api: AnophelesSnpData, sample_query, sample_query_options
+    ag3_sim_api: AnophelesSnpData, sample_query, sample_query_options, rng
 ):
-    contig = random.choice(ag3_sim_api.contigs)
+    contig = rng.choice(ag3_sim_api.contigs)
     df_samples = ag3_sim_api.sample_metadata().query(
         sample_query, **sample_query_options
     )
@@ -599,15 +600,16 @@ def test_snp_genotypes_with_sample_query_options_param(
             region=contig,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            rng=rng,
         )
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
+def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom, rng):
     api = ag3_sim_api
 
     # Standard checks.
-    check_snp_genotypes(api, region=chrom)
+    check_snp_genotypes(api, region=chrom, rng=rng)
 
     # Extra checks.
     contig_r, contig_l = api.virtual_contigs[chrom]
@@ -619,10 +621,10 @@ def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     # Standard checks.
-    check_snp_genotypes(api, region=region)
+    check_snp_genotypes(api, region=region, rng=rng)
     # Extra checks.
     pos = api.snp_sites(region=region, field="POS")
     gt = api.snp_genotypes(region=region)
@@ -630,7 +632,7 @@ def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom):
+def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom, rng):
     api = ag3_sim_api
 
     # Test with whole chromosome.
@@ -644,7 +646,7 @@ def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     pos = api.snp_sites(region=region, field="POS").compute()
     ds_region = api.snp_variants(region=region)
@@ -745,19 +747,19 @@ def check_snp_calls(api, sample_sets, region, site_mask):
 @parametrize_with_cases(
     "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
 )
-def test_snp_calls_with_sample_sets_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_sample_sets_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize sample_sets.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Run tests.
@@ -768,11 +770,11 @@ def test_snp_calls_with_sample_sets_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_calls_with_region_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_region_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize region.
     contig = fixture.random_contig()
@@ -781,7 +783,7 @@ def test_snp_calls_with_region_param(fixture, api: AnophelesSnpData):
         contig,
         fixture.random_region_str(),
         [fixture.random_region_str(), fixture.random_region_str()],
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Run tests.
@@ -792,10 +794,10 @@ def test_snp_calls_with_region_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_calls_with_site_mask_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_site_mask_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Parametrize site_mask.
@@ -866,10 +868,10 @@ def test_snp_calls_with_sample_query_options_param(
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_min_cohort_size_param(fixture, rng, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with minimum cohort size.
@@ -889,10 +891,10 @@ def test_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_max_cohort_size_param(fixture, rng, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with maximum cohort size.
@@ -906,14 +908,14 @@ def test_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
+def test_snp_calls_with_cohort_size_param(fixture, rng, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 11, dtype=int)
     ds = api.snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -1008,7 +1010,7 @@ def test_snp_calls_cache_is_per_instance(ag3_sim_api: AnophelesSnpData):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
+def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom, rng):
     api = ag3_sim_api
 
     # Test with whole chromosome.
@@ -1029,7 +1031,7 @@ def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.
@@ -1093,19 +1095,19 @@ def check_snp_allele_counts(
 @parametrize_with_cases(
     "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
 )
-def test_snp_allele_counts_with_sample_sets_param(fixture, api: AnophelesSnpData):
+def test_snp_allele_counts_with_sample_sets_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize sample_sets.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Run tests.
@@ -1120,11 +1122,11 @@ def test_snp_allele_counts_with_sample_sets_param(fixture, api: AnophelesSnpData
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_allele_counts_with_region_param(fixture, api: AnophelesSnpData):
+def test_snp_allele_counts_with_region_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize region.
     contig = fixture.random_contig()
@@ -1133,7 +1135,7 @@ def test_snp_allele_counts_with_region_param(fixture, api: AnophelesSnpData):
         contig,
         fixture.random_region_str(),
         [fixture.random_region_str(), fixture.random_region_str()],
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Run tests.
@@ -1148,10 +1150,10 @@ def test_snp_allele_counts_with_region_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_snp_allele_counts_with_site_mask_param(fixture, api: AnophelesSnpData):
+def test_snp_allele_counts_with_site_mask_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Parametrize site_mask.
@@ -1169,12 +1171,12 @@ def test_snp_allele_counts_with_site_mask_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".", filter=~ft.has_tag("no_sex_calls"))
-def test_snp_allele_counts_with_sample_query_param(fixture, api: AnophelesSnpData):
+def test_snp_allele_counts_with_sample_query_param(fixture, rng, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize sample_query.
     parametrize_sample_query = (None, "sex_call == 'F'")
@@ -1192,13 +1194,13 @@ def test_snp_allele_counts_with_sample_query_param(fixture, api: AnophelesSnpDat
 
 @parametrize_with_cases("fixture,api", cases=".", filter=~ft.has_tag("no_sex_calls"))
 def test_snp_allele_counts_with_sample_query_options_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
     sample_query_options = {
         "local_dict": {
             "sex_call_list": ["F", "M"],
@@ -1228,7 +1230,7 @@ def _check_is_accessible(api: AnophelesSnpData, region, mask):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_is_accessible(fixture, api: AnophelesSnpData):
+def test_is_accessible(fixture, rng, api: AnophelesSnpData):
     # Parametrize region.
     contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
@@ -1236,7 +1238,7 @@ def test_is_accessible(fixture, api: AnophelesSnpData):
     parametrize_region = [
         contig,
         fixture.random_region_str(),
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Parametrize site_mask.
@@ -1255,12 +1257,12 @@ def test_is_accessible(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_snps(fixture, api: AnophelesSnpData):
+def test_plot_snps(fixture, rng, api: AnophelesSnpData):
     # Randomly choose parameter values.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
-    site_mask = random.choice(api.site_mask_ids)
+    site_mask = rng.choice(api.site_mask_ids)
 
     # Exercise the function.
     fig = api.plot_snps(
@@ -1403,20 +1405,20 @@ def check_biallelic_snp_calls_and_diplotypes(
     "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
 )
 def test_biallelic_snp_calls_and_diplotypes_with_sample_sets_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
     region = fixture.random_region_str()
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize sample_sets.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Run tests.
@@ -1428,12 +1430,12 @@ def test_biallelic_snp_calls_and_diplotypes_with_sample_sets_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_region_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrize region.
     contig = fixture.random_contig()
@@ -1442,7 +1444,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_region_param(
         contig,
         fixture.random_region_str(),
         [fixture.random_region_str(), fixture.random_region_str()],
-        random.choice(df_gff["ID"].dropna().to_list()),
+        rng.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Run tests.
@@ -1454,11 +1456,11 @@ def test_biallelic_snp_calls_and_diplotypes_with_region_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_site_mask_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Parametrize site_mask.
@@ -1533,11 +1535,11 @@ def test_biallelic_snp_calls_and_diplotypes_with_sample_query_options_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_min_cohort_size_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with minimum cohort size.
@@ -1558,11 +1560,11 @@ def test_biallelic_snp_calls_and_diplotypes_with_min_cohort_size_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_max_cohort_size_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with maximum cohort size.
@@ -1577,15 +1579,15 @@ def test_biallelic_snp_calls_and_diplotypes_with_max_cohort_size_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = rng.choice(all_sample_sets)
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 11, dtype=int)
     ds = api.biallelic_snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -1617,9 +1619,9 @@ def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
     ],
 )
 def test_biallelic_snp_calls_and_diplotypes_with_site_class_param(
-    ag3_sim_api: AnophelesSnpData, site_class
+    ag3_sim_api: AnophelesSnpData, site_class, rng
 ):
-    contig = random.choice(ag3_sim_api.contigs)
+    contig = rng.choice(ag3_sim_api.contigs)
     ds1 = ag3_sim_api.biallelic_snp_calls(region=contig)
     ds2 = ag3_sim_api.biallelic_snp_calls(region=contig, site_class=site_class)
     assert ds2.sizes["variants"] < ds1.sizes["variants"]
@@ -1630,17 +1632,17 @@ def test_biallelic_snp_calls_and_diplotypes_with_site_class_param(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_conditions(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
-    contig = random.choice(api.contigs)
+    contig = rng.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.randint(1, 3)
-    max_missing_an = random.randint(5, 10)
+    min_minor_ac = rng.integers(1, 4, dtype=int)
+    max_missing_an = rng.integers(5, 11, dtype=int)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1668,7 +1670,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2, endpoint=True, dtype=int)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,
@@ -1696,17 +1698,17 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
-    fixture, api: AnophelesSnpData
+    fixture, rng, api: AnophelesSnpData
 ):
     # Fixed parameters.
-    contig = random.choice(api.contigs)
+    contig = rng.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.uniform(0, 0.05)
-    max_missing_an = random.uniform(0.05, 0.2)
+    min_minor_ac = rng.uniform(0, 0.05)
+    max_missing_an = rng.uniform(0.05, 0.2)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1735,7 +1737,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2, endpoint=True, dtype=int)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,

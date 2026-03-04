@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import plotly.graph_objects as go  # type: ignore
 import pytest
@@ -99,12 +97,12 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
-def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
+def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric, rng):
     # Check available data.
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
 
     # Run the distance computation.
     dist, samples, n_snps_used = api.biallelic_diplotype_pairwise_distances(
@@ -142,31 +140,29 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_biallelic_diplotype_pairwise_distance_with_metric(
-    fixture, api: AnophelesDistanceAnalysis
+    fixture, rng, api: AnophelesDistanceAnalysis
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
 
     for metric in "cityblock", "euclidean", "sqeuclidean":
         check_biallelic_diplotype_pairwise_distance(
-            api=api,
-            data_params=data_params,
-            metric=metric,
+            api=api, data_params=data_params, metric=metric, rng=rng
         )
 
 
-def check_njt(*, api, data_params, metric, algorithm):
+def check_njt(*, api, data_params, metric, algorithm, rng):
     # Check available data.
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
 
     # Run the distance computation.
     Z, samples, n_snps_used = api.njt(
@@ -192,37 +188,38 @@ def check_njt(*, api, data_params, metric, algorithm):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_njt_with_metric(fixture, api: AnophelesDistanceAnalysis):
+def test_njt_with_metric(fixture, rng, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
     parametrize_metric = "cityblock", "euclidean", "sqeuclidean"
-    algorithm = random.choice(["dynamic", "rapid", "canonical"])
+    algorithm = str(rng.choice(["dynamic", "rapid", "canonical"]))
     for metric in parametrize_metric:
         check_njt(
             api=api,
             data_params=data_params,
             metric=metric,
             algorithm=algorithm,
+            rng=rng,
         )
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_njt_with_algorithm(fixture, api: AnophelesDistanceAnalysis):
+def test_njt_with_algorithm(fixture, rng, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
-    metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
+    metric = str(rng.choice(["cityblock", "euclidean", "sqeuclidean"]))
     parametrize_algorithm = "dynamic", "rapid", "canonical"
     for algorithm in parametrize_algorithm:
         check_njt(
@@ -230,21 +227,22 @@ def test_njt_with_algorithm(fixture, api: AnophelesDistanceAnalysis):
             data_params=data_params,
             metric=metric,
             algorithm=algorithm,
+            rng=rng,
         )
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
+def test_plot_njt(fixture, rng, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
-    metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
-    algorithm = random.choice(["dynamic", "rapid", "canonical"])
+    metric = str(rng.choice(["cityblock", "euclidean", "sqeuclidean"]))
+    algorithm = str(rng.choice(["dynamic", "rapid", "canonical"]))
     custom_cohorts = {
         "male": "sex_call == 'M'",
         "female": "sex_call == 'F'",
@@ -255,7 +253,7 @@ def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
     # Check available data.
     ds = api.biallelic_snp_calls(**data_params)
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
 
     # Exercise the function.
     for color, symbol in zip(colors, symbols):

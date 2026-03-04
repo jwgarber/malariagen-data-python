@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -147,13 +146,13 @@ def check_g123_gwss(*, api, g123_params):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
+def test_g123_gwss_with_default_sites(fixture, rng, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=rng.choice(api.contigs),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=rng.integers(100, 500, endpoint=True, dtype=int),
         min_cohort_size=10,
     )
 
@@ -162,7 +161,7 @@ def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
+def test_g123_gwss_with_phased_sites(fixture, rng, api: AnophelesG123Analysis):
     # Skip if this dataset has no phasing analyses (e.g., Adir1, Amin1).
     if not api.phasing_analysis_ids:
         pytest.skip("No phasing analyses available for this dataset.")
@@ -170,10 +169,10 @@ def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sites=random.choice(api.phasing_analysis_ids),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=rng.choice(api.contigs),
+        sites=rng.choice(api.phasing_analysis_ids),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=rng.integers(100, 500, endpoint=True, dtype=int),
         min_cohort_size=10,
     )
 
@@ -182,15 +181,15 @@ def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_gwss_with_segregating_sites(fixture, api: AnophelesG123Analysis):
+def test_g123_gwss_with_segregating_sites(fixture, rng, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sites="segregating",
-        site_mask=random.choice(api.site_mask_ids),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        site_mask=rng.choice(api.site_mask_ids),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=rng.integers(100, 500, endpoint=True, dtype=int),
         min_cohort_size=10,
     )
 
@@ -199,15 +198,15 @@ def test_g123_gwss_with_segregating_sites(fixture, api: AnophelesG123Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_gwss_with_all_sites(fixture, api: AnophelesG123Analysis):
+def test_g123_gwss_with_all_sites(fixture, rng, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sites="all",
         site_mask=None,
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=rng.integers(100, 500, endpoint=True, dtype=int),
         min_cohort_size=10,
     )
 
@@ -216,13 +215,13 @@ def test_g123_gwss_with_all_sites(fixture, api: AnophelesG123Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
+def test_g123_gwss_with_bad_sites(fixture, rng, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=rng.choice(api.contigs),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=rng.integers(100, 500, endpoint=True, dtype=int),
         min_cohort_size=10,
         sites="foobar",
     )
@@ -233,18 +232,19 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_g123_calibration(fixture, api: AnophelesG123Analysis):
+def test_g123_calibration(fixture, rng, api: AnophelesG123Analysis):
     # Skip if this dataset has no phasing analyses (e.g., Adir1, Amin1).
     if not api.phasing_analysis_ids:
         pytest.skip("No phasing analyses available for this dataset.")
 
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = sorted(random.sample(range(100, 500), k=random.randint(2, 5)))
+    window_sizes = rng.choice(range(100, 500), size=rng.integers(2, 6), replace=False)
+    window_sizes = sorted([int(x) for x in window_sizes])
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sites=random.choice(api.phasing_analysis_ids),
-        sample_sets=[random.choice(all_sample_sets)],
+        contig=rng.choice(api.contigs),
+        sites=rng.choice(api.phasing_analysis_ids),
+        sample_sets=[rng.choice(all_sample_sets)],
         min_cohort_size=10,
         window_sizes=window_sizes,
     )
